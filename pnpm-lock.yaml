@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      open-props:
-        specifier: ^1.7.8
-        version: 1.7.8
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^3.0.0
@@ -856,9 +852,6 @@ packages:
 
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
-
-  open-props@1.7.8:
-    resolution: {integrity: sha512-krA26gD4jikp1RehQkO7zOdu3ZXdPRqAOBg5nChCYK0ykpufQflSxHw2t6W5vzG7Ot+J8Lv/NDM8ZwBdbteX5g==}
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -1855,8 +1848,6 @@ snapshots:
   nanoid@3.3.8: {}
 
   natural-compare@1.4.0: {}
-
-  open-props@1.7.8: {}
 
   optionator@0.9.4:
     dependencies:
