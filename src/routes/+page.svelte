@@ -44,55 +44,66 @@
 			const files = Array.from(fileInput.files || []);
 			console.log("🚀 ~ handleAddImages ~ files:", files);
 
-			for (const file of files) {
-				const id = crypto.randomUUID();
-
-				addImage(id, file.name, await file.arrayBuffer());
-
-				try {
-					const reader = new FileReader();
-
-					const imageData = await new Promise<string>((resolve, reject) => {
-						reader.onload = () => {
-							const imageData = reader.result as string;
-
-							updateImage(id, { base64: imageData });
-
-							resolve(imageData as string);
-						};
-						reader.onerror = reject;
-						reader.readAsDataURL(file);
-					});
-
-					cloudinary
-						.upload(imageData, "testing")
-						.onProgress((progress) => {
-							updateImage(id, { progress, status: "uploading" });
-						})
-						.onSuccess((result) => {
-							updateImage(id, {
-								url: result.url,
-								cloudinaryId: result.public_id,
-								dimensions: {
-									width: result.width,
-									height: result.height
-								},
-								status: "uploaded"
-							});
-						})
-						.onError((error) => {
-							console.error("Upload failed:", error);
-							updateImage(id, { status: "failed" });
-						})
-						.start();
-				} catch (error) {
-					console.error("Upload failed:", error);
-					updateImage(id, { status: "failed" });
-				}
-			}
+			await handleFiles(files);
 		};
 
 		fileInput.click();
+	}
+
+	function handleDropImages(e: DragEvent) {
+		e.preventDefault();
+		const files = Array.from(e.dataTransfer?.files || []);
+		console.log("🚀 ~ handleDropImages ~ files:", files);
+		handleFiles(files);
+	}
+
+	async function handleFiles(files: File[]) {
+		for (const file of files) {
+			const id = crypto.randomUUID();
+
+			addImage(id, file.name, await file.arrayBuffer());
+
+			try {
+				const reader = new FileReader();
+
+				const imageData = await new Promise<string>((resolve, reject) => {
+					reader.onload = () => {
+						const imageData = reader.result as string;
+
+						updateImage(id, { base64: imageData });
+
+						resolve(imageData as string);
+					};
+					reader.onerror = reject;
+					reader.readAsDataURL(file);
+				});
+
+				cloudinary
+					.upload(imageData, "testing")
+					.onProgress((progress) => {
+						updateImage(id, { progress, status: "uploading" });
+					})
+					.onSuccess((result) => {
+						updateImage(id, {
+							url: result.url,
+							cloudinaryId: result.public_id,
+							dimensions: {
+								width: result.width,
+								height: result.height
+							},
+							status: "uploaded"
+						});
+					})
+					.onError((error) => {
+						console.error("Upload failed:", error);
+						updateImage(id, { status: "failed" });
+					})
+					.start();
+			} catch (error) {
+				console.error("Upload failed:", error);
+				updateImage(id, { status: "failed" });
+			}
+		}
 	}
 </script>
 
@@ -103,6 +114,15 @@
 
 <button onclick={handleAddImages}>Add images</button>
 
+<div
+	class="drop"
+	ondragover={(e) => {
+		e.preventDefault();
+	}}
+	ondrop={handleDropImages}
+	role="none"
+></div>
+
 <div class="images">
 	{#each images as image}
 		<div class="img-container">
@@ -111,6 +131,8 @@
 					{image.progress}%
 				{:else if image.status === "uploaded"}
 					Done
+				{:else}
+					Pending
 				{/if}
 			</span>
 
@@ -143,6 +165,14 @@
 			color: black;
 			background-color: color-mix(in srgb, white 50%, transparent);
 			border-radius: 0.25rem; /* Optional: adds rounded corners */
+			box-shadow: rgba(0, 0, 0, 0.5) 0 0 2rem;
 		}
+	}
+
+	.drop {
+		width: 30rem;
+		height: 20rem;
+		border: lightblue dashed 2px;
+		margin-block: 1rem;
 	}
 </style>
