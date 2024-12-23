@@ -52,7 +52,10 @@
 
 	function handleDropImages(e: DragEvent) {
 		e.preventDefault();
-		const files = Array.from(e.dataTransfer?.files || []);
+
+		const files = Array.from(e.dataTransfer?.files || []).filter((file) =>
+			file.type.startsWith("image"),
+		);
 		console.log("🚀 ~ handleDropImages ~ files:", files);
 		handleFiles(files);
 	}
@@ -78,8 +81,21 @@
 					reader.readAsDataURL(file);
 				});
 
+				const response = await fetch("/signature", {
+					method: "POST",
+				});
+				const {
+					signature,
+					timestamp,
+					folder,
+					upload_preset,
+				}: { signature: string; timestamp: number; folder: string; upload_preset: string } =
+					await response.json();
+
+				console.log({ signature, timestamp });
+
 				cloudinary
-					.upload(imageData, "testing")
+					.upload(imageData, upload_preset, signature, timestamp, folder)
 					.onProgress((progress) => {
 						updateImage(id, { progress, status: "uploading" });
 					})
@@ -89,9 +105,9 @@
 							cloudinaryId: result.public_id,
 							dimensions: {
 								width: result.width,
-								height: result.height
+								height: result.height,
 							},
-							status: "uploaded"
+							status: "uploaded",
 						});
 					})
 					.onError((error) => {

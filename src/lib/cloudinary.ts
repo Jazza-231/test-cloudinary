@@ -1,3 +1,4 @@
+import { PUBLIC_CLOUDINARY_KEY, PUBLIC_CLOUDINARY_NAME } from "$env/static/public";
 import type { UploadApiResponse, UploadApiErrorResponse } from "cloudinary";
 // Is it entirely a terrible idea to import a package just for the types?
 
@@ -11,10 +12,22 @@ class CloudinaryUploader {
 	private errorCallback?: ErrorCallback;
 	private imageData: string;
 	private uploadPreset: string;
+	private signature: string;
+	private timestamp: number;
+	private folder: string;
 
-	constructor(imageData: string, uploadPreset: string) {
+	constructor(
+		imageData: string,
+		uploadPreset: string,
+		signature: string,
+		timestamp: number,
+		folder: string,
+	) {
 		this.imageData = imageData;
 		this.uploadPreset = uploadPreset;
+		this.signature = signature;
+		this.timestamp = timestamp;
+		this.folder = folder;
 	}
 
 	onProgress(callback: ProgressCallback) {
@@ -35,10 +48,15 @@ class CloudinaryUploader {
 	start() {
 		return new Promise((resolve, reject) => {
 			const formData = new FormData();
-			formData.append("upload_preset", this.uploadPreset);
 
-			const base64Data = this.imageData.split(",")[1];
-			formData.append("file", "data:image/png;base64," + base64Data);
+			formData.append("upload_preset", this.uploadPreset);
+			formData.append("file", this.imageData);
+			formData.append("signature", this.signature);
+			formData.append("timestamp", this.timestamp.toString());
+			formData.append("folder", this.folder);
+
+			if (!PUBLIC_CLOUDINARY_KEY) return reject(new Error("No API key"));
+			formData.append("api_key", PUBLIC_CLOUDINARY_KEY);
 
 			const xhr = new XMLHttpRequest();
 
@@ -64,7 +82,11 @@ class CloudinaryUploader {
 					this.successCallback?.(res);
 					resolve(res);
 				} catch (error) {
-					this.errorCallback?.({ ...(error as Error), http_code: xhr.status });
+					this.errorCallback?.({
+						...(error as Error),
+						http_code: xhr.status,
+						message: (error as Error).message,
+					});
 					reject(error);
 				}
 			};
@@ -75,7 +97,7 @@ class CloudinaryUploader {
 			});
 
 			// It's ok to leak this. There is no money associated, and it is a new account I just made.
-			xhr.open("post", `https://api.cloudinary.com/v1_1/dgxy4yhhp/auto/upload`);
+			xhr.open("post", `https://api.cloudinary.com/v1_1/${PUBLIC_CLOUDINARY_NAME}/auto/upload`);
 			xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
 			xhr.send(formData);
 		});
@@ -83,6 +105,11 @@ class CloudinaryUploader {
 }
 
 export const cloudinary = {
-	upload: (imageData: string, uploadPreset: string) =>
-		new CloudinaryUploader(imageData, uploadPreset)
+	upload: (
+		imageData: string,
+		uploadPreset: string,
+		signature: string,
+		timestamp: number,
+		folder: string,
+	) => new CloudinaryUploader(imageData, uploadPreset, signature, timestamp, folder),
 };
