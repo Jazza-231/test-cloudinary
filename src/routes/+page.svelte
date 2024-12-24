@@ -1,13 +1,15 @@
 <script lang="ts">
 	import "../app.css";
 	import { cloudinary } from "$lib/cloudinary";
+	import { Tween } from "svelte/motion";
+	import { cubicInOut } from "svelte/easing";
 
 	interface Image {
 		id: string;
 		name: string;
 		arrayBuffer: ArrayBuffer;
 		base64?: string;
-		progress?: number;
+		progressTween?: Tween<number>;
 		status?: "uploading" | "uploaded" | "failed";
 		url?: string;
 		folder?: string;
@@ -23,7 +25,8 @@
 
 	function addImage(id: string, name: string, arrayBuffer: ArrayBuffer) {
 		if (images.map((image) => image.id).indexOf(id) === -1) {
-			images.push({ id, name, arrayBuffer });
+			const progressTween = new Tween(0, { duration: 1000, easing: cubicInOut });
+			images.push({ id, name, arrayBuffer, progressTween });
 		}
 	}
 
@@ -42,8 +45,6 @@
 
 		fileInput.onchange = async () => {
 			const files = Array.from(fileInput.files || []);
-			console.log("🚀 ~ handleAddImages ~ files:", files);
-
 			await handleFiles(files);
 		};
 
@@ -56,7 +57,6 @@
 		const files = Array.from(e.dataTransfer?.files || []).filter((file) =>
 			file.type.startsWith("image"),
 		);
-		console.log("🚀 ~ handleDropImages ~ files:", files);
 		handleFiles(files);
 	}
 
@@ -72,32 +72,24 @@
 				const imageData = await new Promise<string>((resolve, reject) => {
 					reader.onload = () => {
 						const imageData = reader.result as string;
-
 						updateImage(id, { base64: imageData });
-
 						resolve(imageData as string);
 					};
 					reader.onerror = reject;
 					reader.readAsDataURL(file);
 				});
 
-				const response = await fetch("/signature", {
-					method: "POST",
-				});
-				const {
-					signature,
-					timestamp,
-					folder,
-					upload_preset,
-				}: { signature: string; timestamp: number; folder: string; upload_preset: string } =
-					await response.json();
-
-				console.log({ signature, timestamp });
+				const response = await fetch("/signature", { method: "POST" });
+				const { signature, timestamp, folder, upload_preset } = await response.json();
 
 				cloudinary
 					.upload(imageData, upload_preset, signature, timestamp, folder)
 					.onProgress((progress) => {
-						updateImage(id, { progress, status: "uploading" });
+						const image = images.find((img) => img.id === id);
+						if (image?.progressTween) {
+							image.progressTween.target = progress;
+						}
+						updateImage(id, { status: "uploading" });
 					})
 					.onSuccess((result) => {
 						updateImage(id, {
@@ -144,7 +136,7 @@
 		<div class="img-container">
 			<span>
 				{#if image.status === "uploading"}
-					{image.progress}%
+					{image.progressTween?.current.toFixed()}%
 				{:else if image.status === "uploaded"}
 					Done
 				{:else}
@@ -165,7 +157,7 @@
 		margin-block: 2rem;
 
 		.img-container {
-			position: relative; /* Add this to contain the absolute span */
+			position: relative;
 		}
 
 		img {
@@ -177,10 +169,10 @@
 			position: absolute;
 			top: 0.75rem;
 			left: 0.75rem;
-			padding: 0.25rem 0.5rem; /* Add padding for better appearance */
+			padding: 0.25rem 0.5rem;
 			color: black;
 			background-color: color-mix(in srgb, white 50%, transparent);
-			border-radius: 0.25rem; /* Optional: adds rounded corners */
+			border-radius: 0.25rem;
 			box-shadow: rgba(0, 0, 0, 0.5) 0 0 2rem;
 		}
 	}
