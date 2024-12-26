@@ -92,8 +92,10 @@
 						updateImage(id, { status: "uploading" });
 					})
 					.onSuccess((result) => {
+						console.log(result);
+
 						updateImage(id, {
-							url: result.url,
+							url: result.secure_url,
 							cloudinaryId: result.public_id,
 							dimensions: {
 								width: result.width,

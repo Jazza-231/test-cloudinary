@@ -1,13 +1,7 @@
 import { CLOUDINARY_SECRET } from "$env/static/private";
 import { PUBLIC_CLOUDINARY_KEY, PUBLIC_CLOUDINARY_NAME } from "$env/static/public";
+import { generateSignature } from "$lib/cloudinary/signature";
 import { json } from "@sveltejs/kit";
-import { v2 as cloudinary } from "cloudinary";
-
-cloudinary.config({
-	cloud_name: PUBLIC_CLOUDINARY_NAME,
-	api_key: PUBLIC_CLOUDINARY_KEY,
-	api_secret: CLOUDINARY_SECRET,
-});
 
 export const POST = async () => {
 	const timestamp = Math.round(new Date().getTime() / 1000);
@@ -17,17 +11,14 @@ export const POST = async () => {
 		folder: "sa",
 	};
 
-	if (!cloudinary.config().api_secret) return new Response("No API secret");
+	if (!CLOUDINARY_SECRET) return new Response("No API secret");
 
-	const signature = cloudinary.utils.api_sign_request(
-		paramsToSign,
-		cloudinary.config().api_secret as string,
-	);
+	const signature = generateSignature(paramsToSign, CLOUDINARY_SECRET);
 
 	console.log({
-		cloudName: cloudinary.config().cloud_name,
-		apiKey: cloudinary.config().api_key,
-		apiSecret: cloudinary.config().api_secret,
+		cloudName: PUBLIC_CLOUDINARY_NAME,
+		apiKey: PUBLIC_CLOUDINARY_KEY,
+		apiSecret: CLOUDINARY_SECRET,
 		signature,
 		paramsToSign,
 	});

@@ -1,6 +1,4 @@
 import { PUBLIC_CLOUDINARY_KEY, PUBLIC_CLOUDINARY_NAME } from "$env/static/public";
-import type { UploadApiResponse, UploadApiErrorResponse } from "cloudinary";
-// Is it entirely a terrible idea to import a package just for the types?
 
 type ProgressCallback = (progress: number) => void;
 type SuccessCallback = (result: UploadApiResponse) => void;
