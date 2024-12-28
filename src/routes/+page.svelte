@@ -10,7 +10,7 @@
 		arrayBuffer: ArrayBuffer;
 		base64?: string;
 		progressTween?: Tween<number>;
-		status?: "uploading" | "uploaded" | "failed";
+		status?: "uploading" | "uploaded" | "failed" | "deleting" | "errorDeleting";
 		url?: string;
 		folder?: string;
 		cloudinaryId?: string;
@@ -18,6 +18,7 @@
 			width: number;
 			height: number;
 		};
+		error?: Error;
 	}
 
 	let images: Image[] = $state([]);
@@ -34,6 +35,13 @@
 		const imageIndex = images.findIndex((image) => image.id === id);
 		if (imageIndex !== -1) {
 			images[imageIndex] = { ...images[imageIndex], ...args };
+		}
+	}
+
+	function removeImage(id: string) {
+		const imageIndex = images.findIndex((image) => image.id === id);
+		if (imageIndex !== -1) {
+			images.splice(imageIndex, 1);
 		}
 	}
 
@@ -79,11 +87,8 @@
 					reader.readAsDataURL(file);
 				});
 
-				const response = await fetch("/signature", { method: "POST" });
-				const { signature, timestamp, folder, upload_preset } = await response.json();
-
 				cloudinary
-					.upload(imageData, upload_preset, signature, timestamp, folder)
+					.upload(imageData)
 					.onProgress((progress) => {
 						const image = images.find((img) => img.id === id);
 						if (image?.progressTween) {
@@ -106,12 +111,14 @@
 					})
 					.onError((error) => {
 						console.error("Upload failed:", error);
-						updateImage(id, { status: "failed" });
+						updateImage(id, { status: "failed", error });
 					})
 					.start();
 			} catch (error) {
-				console.error("Upload failed:", error);
-				updateImage(id, { status: "failed" });
+				if (error instanceof Error) {
+					console.error("Upload failed:", error);
+					updateImage(id, { status: "failed", error });
+				}
 			}
 		}
 	}
@@ -134,20 +141,46 @@
 ></div>
 
 <div class="images">
-	{#each images as image}
-		<div class="img-container">
-			<span>
-				{#if image.status === "uploading"}
-					{image.progressTween?.current.toFixed()}%
-				{:else if image.status === "uploaded"}
-					Done
-				{:else}
-					Pending
-				{/if}
-			</span>
+	{#each images as image (image.id)}
+		{#if image.status !== "deleting"}
+			<div class="img-container">
+				<span>
+					{#if image.status === "uploading"}
+						{image.progressTween?.current.toFixed()}%
+					{:else if image.status === "uploaded"}
+						Done
+						<button
+							onclick={async () => {
+								if (image.status === "deleting") return;
 
-			<img src={image.base64} alt={image.name} />
-		</div>
+								updateImage(image.id, { status: "deleting" });
+
+								try {
+									const response = await cloudinary.delete(image.cloudinaryId || "", image.id);
+									if (typeof response === "object") throw new Error(response.message);
+									removeImage(response);
+
+									// This does not work, and I am not sure why. The logs are...something. Take a look at wtf.png
+									// if you log image.id and response, you will see they don't match
+									// Fixed by adding a key to the each block - https://svelte.dev/tutorial/svelte/keyed-each-blocks
+									// await cloudinary.delete(image.cloudinaryId || "", image.id);
+									// removeImage(image.id);
+								} catch (error) {
+									console.error("Failed to delete:", error);
+									updateImage(image.id, { status: "errorDeleting" });
+								}
+							}}
+						>
+							Delete
+						</button>
+					{:else}
+						Pending
+					{/if}
+				</span>
+
+				<img src={image.base64} alt={image.name} />
+			</div>
+		{/if}
 	{/each}
 </div>
 

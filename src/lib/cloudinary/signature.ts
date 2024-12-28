@@ -8,8 +8,7 @@ export function generateSignature(params: object, secret: string) {
 
 		for (const key in params) {
 			if (Object.prototype.hasOwnProperty.call(params, key)) {
-				// @ts-expect-error - Idc
-				const element = params[key];
+				const element = params[key as keyof typeof params];
 				if (element) {
 					param = key.toString() + "=" + String(element);
 					tempParams.push(param);
